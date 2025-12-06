@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kur mano pinigai?</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="page-wrapper">
+        <aside class="sidebar" id="filtersSidebar" style="display: none;">
+            <div class="filters-panel" id="filtersPanel">
+                <div class="filters-header">
+                    <h2 data-translate="filters">🔍 Filters</h2>
+                </div>
+                <div class="filters-content" id="filtersContent">
+                    <div class="filter-group">
+                        <h3 data-translate="dateRange">Date Range</h3>
+                        <div class="date-inputs">
+                            <div class="date-input">
+                                <label for="dateFrom" data-translate="from">From:</label>
+                                <input type="date" id="dateFrom" onchange="applyFilters()">
+                            </div>
+                            <div class="date-input">
+                                <label for="dateTo" data-translate="to">To:</label>
+                                <input type="date" id="dateTo" onchange="applyFilters()">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3 data-translate="transactionType">Transaction Type</h3>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="filterExpenses" checked onchange="applyFilters()"> <span data-translate="expenses">Expenses</span></label>
+                            <label><input type="checkbox" id="filterIncome" checked onchange="applyFilters()"> <span data-translate="income">Income</span></label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3 data-translate="expenseCategories">Expense Categories</h3>
+                        <div class="checkbox-group" id="expenseCategories"></div>
+                        <div class="filter-actions">
+                            <button onclick="selectAllExpenseCategories()" class="filter-btn-small" data-translate="selectAll">Select All</button>
+                            <button onclick="deselectAllExpenseCategories()" class="filter-btn-small" data-translate="deselectAll">Deselect All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3 data-translate="incomeCategories">Income Categories</h3>
+                        <div class="checkbox-group" id="incomeCategories"></div>
+                        <div class="filter-actions">
+                            <button onclick="selectAllIncomeCategories()" class="filter-btn-small" data-translate="selectAll">Select All</button>
+                            <button onclick="deselectAllIncomeCategories()" class="filter-btn-small" data-translate="deselectAll">Deselect All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3 data-translate="amountRange">Amount Range</h3>
+                        <div class="amount-inputs">
+                            <div class="amount-input">
+                                <label for="amountMin" data-translate="min">Min (€):</label>
+                                <input type="number" id="amountMin" step="0.01" data-placeholder="noMinimum" onchange="applyFilters()">
+                            </div>
+                            <div class="amount-input">
+                                <label for="amountMax" data-translate="max">Max (€):</label>
+                                <input type="number" id="amountMax" step="0.01" data-placeholder="noMaximum" onchange="applyFilters()">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <h3 data-translate="manualAdditions">Manual Additions</h3>
+                        <div class="manual-entry-form">
+                            <div class="form-row">
+                                <label for="manualDate" data-translate="date">Date:</label>
+                                <input type="date" id="manualDate" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="manualDescription" data-translate="description">Description:</label>
+                                <input type="text" id="manualDescription" placeholder="Enter description" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="manualAmount" data-translate="amount">Amount (€):</label>
+                                <input type="number" id="manualAmount" step="0.01" placeholder="0.00" required>
+                            </div>
+                            <div class="form-row">
+                                <label for="manualType" data-translate="type">Type:</label>
+                                <select id="manualType" required>
+                                    <option value="D" data-translate="expenses">Expenses</option>
+                                    <option value="K" data-translate="income">Income</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button onclick="addManualEntry()" class="filter-btn-small" id="addManualBtn" data-translate="add">Add</button>
+                                <button onclick="cancelManualEdit()" class="filter-btn-small" id="cancelManualBtn" style="display: none;" data-translate="cancel">Cancel</button>
+                            </div>
+                        </div>
+                        <div class="manual-entries-list" id="manualEntriesList">
+                            <div class="manual-entries-header">
+                                <h4 data-translate="manualEntries">Manual Entries</h4>
+                            </div>
+                            <div id="manualEntriesContainer" class="manual-entries-container"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button onclick="resetFilters()" class="filter-btn" data-translate="resetFilters">Reset Filters</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <div class="container">
+            <div class="header-section">
+                <div class="language-switcher">
+                    <button onclick="changeLanguage('en')" id="langEn" class="lang-btn active">EN</button>
+                    <button onclick="changeLanguage('lt')" id="langLt" class="lang-btn">LT</button>
+                </div>
+            </div>
+            <h1 data-translate="appTitle">Budget Analyzer</h1>
+            
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="csvFile" accept=".csv" onchange="handleFileSelect()">
+                    <label for="csvFile" class="file-label" id="fileLabel" data-translate="chooseFile">Choose CSV File</label>
+                </div>
+                <div id="loading" class="loading" style="display: none;" data-translate="analyzing">Analyzing...</div>
+            </div>
+            
+            <div id="results" style="display: none;">
+                <div class="summary">
+                    <h2 data-translate="summary">Summary</h2>
+                    <div class="stats">
+                        <div class="stat">
+                            <span class="label" data-translate="totalIncome">Total Income:</span>
+                            <span class="value positive" id="totalIncome">€0.00</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label" data-translate="totalExpenses">Total Expenses:</span>
+                            <span class="value negative" id="totalExpenses">€0.00</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label" data-translate="netBalance">Net Balance:</span>
+                            <span class="value" id="netBalance">€0.00</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label" data-translate="transactions">Transactions:</span>
+                            <span class="value" id="transactionCount">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="monthly-stats-panel" id="monthlyStatsPanel">
+                    <div class="monthly-stats-header" onclick="toggleMonthlyStats()">
+                        <h2 data-translate="monthlyStatistics">📊 Monthly Statistics</h2>
+                        <span class="monthly-stats-toggle-icon" id="monthlyStatsToggleIcon">▼</span>
+                    </div>
+                    <div class="monthly-stats-content" id="monthlyStatsContent" style="display: none;">
+                        <div id="monthlyStatsContainer" class="monthly-stats-section"></div>
+                    </div>
+                </div>
+                
+                <div class="charts-panel" id="chartsPanel">
+                    <div class="charts-header" onclick="toggleCharts()">
+                        <h2 data-translate="chartsGraphs">📈 Charts & Graphs</h2>
+                        <span class="charts-toggle-icon" id="chartsToggleIcon">▼</span>
+                    </div>
+                    <div class="charts-content" id="chartsContent" style="display: none;">
+                        <div class="charts">
+                            <div class="chart-container">
+                                <h3 data-translate="expensesByCategory">Expenses by Category</h3>
+                                <canvas id="expenseChart"></canvas>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <h3 data-translate="monthlyTrends">Monthly Trends</h3>
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <h3 data-translate="topExpenseMerchants">Top Expense Merchants</h3>
+                                <canvas id="merchantChart"></canvas>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <h3 data-translate="savingsRateOverTime">Savings Rate Over Time</h3>
+                                <canvas id="savingsRateChart"></canvas>
+                            </div>
+                            
+                            <div class="chart-container">
+                                <h3 data-translate="cumulativeCashFlow">Cumulative Cash Flow</h3>
+                                <canvas id="cumulativeCashFlowChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+    <script>
+        // Initialize translations when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTranslations();
+            loadManualEntries();
+            renderManualEntries();
+        });
+    </script>
+</body>
+</html>
+
