@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { t, translateCategory } from '../../utils/translations';
+import { t, translateCategory, sortCategoriesByOrder, EXPENSE_CATEGORY_ORDER, INCOME_CATEGORY_ORDER } from '../../utils/translations';
 import ManualEntryForm from './ManualEntryForm';
 import ManualEntriesList from './ManualEntriesList';
 import IgnoredTransactionsList from './IgnoredTransactionsList';
@@ -24,8 +24,12 @@ export default function FilterSidebar() {
 
   if (!isVisible) return null;
 
-  const expenseCategories = originalData ? Object.keys(originalData.expenses_by_category).sort() : [];
-  const incomeCategories = originalData ? Object.keys(originalData.income_by_category).sort() : [];
+  const expenseCategories = originalData 
+    ? sortCategoriesByOrder(Object.keys(originalData.expenses_by_category), EXPENSE_CATEGORY_ORDER)
+    : [];
+  const incomeCategories = originalData 
+    ? sortCategoriesByOrder(Object.keys(originalData.income_by_category), INCOME_CATEGORY_ORDER)
+    : [];
 
   const handleCategoryToggle = (category: string, type: 'expense' | 'income') => {
     const key = type === 'expense' ? 'selectedExpenseCategories' : 'selectedIncomeCategories';

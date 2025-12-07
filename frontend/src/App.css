@@ -82,7 +82,7 @@ body {
 .theme-select:focus {
     outline: none;
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 2px var(--accent-primary-shadow);
 }
 
 .theme-select option {
@@ -390,8 +390,8 @@ h1 {
 }
 
 .month-card:hover {
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
-    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 4px 16px var(--accent-primary-shadow-hover);
+    border-color: var(--accent-primary-border-hover);
 }
 
 .month-header {
@@ -445,7 +445,7 @@ h1 {
 .month-stat:hover {
     background: var(--bg-card-hover);
     transform: translateX(3px);
-    border-color: rgba(102, 126, 234, 0.6);
+    border-color: var(--accent-primary-border-hover);
     border-left-color: var(--accent-primary-hover);
 }
 
@@ -535,7 +535,7 @@ h1 {
 
 .category-item:hover {
     background: var(--bg-card-hover);
-    border-color: rgba(102, 126, 234, 0.6);
+    border-color: var(--accent-primary-border-hover);
     border-left-color: var(--accent-primary-hover);
 }
 
@@ -870,7 +870,7 @@ h1 {
 .date-input input[type="date"]:focus {
     outline: none;
     border-color: var(--accent-primary-hover);
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 2px var(--accent-primary-shadow);
     background: var(--bg-input-focus);
 }
 
@@ -959,7 +959,7 @@ h1 {
 .amount-input input[type="number"]:focus {
     outline: none;
     border-color: var(--accent-primary-hover);
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 2px var(--accent-primary-shadow);
     background: var(--bg-input-focus);
 }
 
@@ -1121,7 +1121,7 @@ h1 {
 .form-row select:focus {
     outline: none;
     border-color: var(--accent-primary-hover);
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 2px var(--accent-primary-shadow);
     background: var(--bg-input-focus);
 }
 
@@ -1187,7 +1187,7 @@ h1 {
 
 .manual-entry-item:hover {
     background: var(--bg-card-hover);
-    border-color: rgba(102, 126, 234, 0.6);
+    border-color: var(--accent-primary-border-hover);
 }
 
 .manual-entry-header {

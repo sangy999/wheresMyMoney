@@ -223,3 +223,46 @@ export function translateCategory(category: string, lang: Language = 'en'): stri
   return category;
 }
 
+// Define the order for expense and income categories
+export const EXPENSE_CATEGORY_ORDER = [
+  'Groceries',
+  'Gas/Fuel',
+  'Subscriptions',
+  'Restaurants',
+  'Shopping',
+  'Transport',
+  'Healthcare',
+  'Insurance',
+  'Utilities',
+  'Transfers',
+  'Entertainment',
+  'Other'
+];
+
+export const INCOME_CATEGORY_ORDER = [
+  'Salary',
+  'Other Income'
+];
+
+// Sort categories according to the defined order
+export function sortCategoriesByOrder<T extends string | [string, any]>(
+  categories: T[],
+  order: string[],
+  getCategoryName: (item: T) => string = (item) => (typeof item === 'string' ? item : item[0])
+): T[] {
+  const orderMap = new Map(order.map((cat, index) => [cat, index]));
+  
+  return [...categories].sort((a, b) => {
+    const nameA = getCategoryName(a);
+    const nameB = getCategoryName(b);
+    const indexA = orderMap.get(nameA) ?? Infinity;
+    const indexB = orderMap.get(nameB) ?? Infinity;
+    
+    // Categories in the order list come first, then alphabetically
+    if (indexA !== indexB) {
+      return indexA - indexB;
+    }
+    return nameA.localeCompare(nameB);
+  });
+}
+

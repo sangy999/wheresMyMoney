@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { t, translateCategory, translations } from '../../utils/translations';
+import { t, translateCategory, translations, sortCategoriesByOrder, EXPENSE_CATEGORY_ORDER, INCOME_CATEGORY_ORDER } from '../../utils/translations';
 import { Transaction } from '../../types';
 import { generateTransactionId } from '../../utils/csvParser';
 
@@ -39,10 +39,16 @@ function MonthCard({ month, stats, formatMonthName }: { month: string; stats: an
   const { ignoredTransactions, toggleIgnoreTransaction, currentLanguage } = useApp();
   const netBalanceClass = stats.netBalance >= 0 ? 'positive' : 'negative';
 
-  const expenseCategories = Object.entries(stats.expenseCategories || {})
-    .sort((a, b) => (b[1] as number) - (a[1] as number));
-  const incomeCategories = Object.entries(stats.incomeCategories || {})
-    .sort((a, b) => (b[1] as number) - (a[1] as number));
+  const expenseCategories = sortCategoriesByOrder(
+    Object.entries(stats.expenseCategories || {}),
+    EXPENSE_CATEGORY_ORDER,
+    (item) => item[0]
+  );
+  const incomeCategories = sortCategoriesByOrder(
+    Object.entries(stats.incomeCategories || {}),
+    INCOME_CATEGORY_ORDER,
+    (item) => item[0]
+  );
 
   return (
     <div className="month-card">
