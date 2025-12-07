@@ -18,6 +18,13 @@ export interface ManualEntry {
   type: 'D' | 'K';
 }
 
+export interface CustomCategory {
+  id: string;
+  name: string;
+  keywords: string[];
+  type: 'D' | 'K'; // 'D' for expense, 'K' for income
+}
+
 export interface MonthlyStats {
   income: number;
   expenses: number;

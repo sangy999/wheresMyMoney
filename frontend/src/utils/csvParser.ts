@@ -1,4 +1,4 @@
-import { Transaction } from '../types';
+import { Transaction, CustomCategory } from '../types';
 import { categorizeTransaction } from './categorizer';
 
 export function getColumnValue(row: Record<string, string>, columnMappings: string[]): string {
@@ -31,7 +31,7 @@ export function formatDateForInput(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function parseCSVRow(row: Record<string, string>): Transaction | null {
+export function parseCSVRow(row: Record<string, string>, customCategories: CustomCategory[] = []): Transaction | null {
   const type = getColumnValue(row, ['D/K', 'D/K']);
   const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim().toUpperCase();
   
@@ -66,9 +66,23 @@ export function parseCSVRow(row: Record<string, string>): Transaction | null {
     beneficiary,
     details: detailsOriginal,
     type: isOpeningBalance ? 'K' : type as 'D' | 'K',
-    category: isOpeningBalance ? 'Opening Balance' : categorizeTransaction(beneficiary, detailsOriginal),
+    category: isOpeningBalance ? 'Opening Balance' : categorizeTransaction(beneficiary, detailsOriginal, customCategories, isOpeningBalance ? 'K' : type as 'D' | 'K'),
     isManual: false
   };
+}
+
+// Helper function to re-categorize existing transactions
+export function recategorizeTransactions(transactions: Transaction[], customCategories: CustomCategory[]): Transaction[] {
+  return transactions.map(t => {
+    // Don't re-categorize manual entries or opening balance
+    if (t.isManual || t.category === 'Opening Balance' || t.category === 'Manual Additions') {
+      return t;
+    }
+    return {
+      ...t,
+      category: categorizeTransaction(t.beneficiary, t.details, customCategories, t.type)
+    };
+  });
 }
 
 export function generateTransactionId(transaction: Transaction): string {

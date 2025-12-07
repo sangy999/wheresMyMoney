@@ -1,5 +1,23 @@
-export function categorizeTransaction(beneficiary: string, details: string): string {
+import { CustomCategory } from '../types';
+
+export function categorizeTransaction(
+  beneficiary: string, 
+  details: string, 
+  customCategories: CustomCategory[] = [],
+  transactionType?: 'D' | 'K'
+): string {
   const text = `${beneficiary} ${details}`.toUpperCase();
+  
+  // Check custom categories first (they take priority)
+  // Only match custom categories that match the transaction type
+  for (const customCategory of customCategories) {
+    if (transactionType && customCategory.type !== transactionType) {
+      continue; // Skip if types don't match
+    }
+    if (customCategory.keywords.some(keyword => text.includes(keyword.toUpperCase()))) {
+      return customCategory.name;
+    }
+  }
   
   // Income categories
   if (text.includes('ATLYGINIMAS') || text.includes('DARBO UZMOKESTIS') || 

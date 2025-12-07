@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { AnalyzedData, ManualEntry, FilterState, Language, Theme, Transaction } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { AnalyzedData, ManualEntry, FilterState, Language, Theme, Transaction, CustomCategory } from '../types';
 import { analyzeData } from '../utils/analyzer';
-import { parseCSVRow, generateTransactionId } from '../utils/csvParser';
+import { parseCSVRow, generateTransactionId, recategorizeTransactions } from '../utils/csvParser';
 import Papa from 'papaparse';
 
 interface AppContextType {
@@ -10,6 +10,7 @@ interface AppContextType {
   originalData: AnalyzedData | null;
   allTransactions: Transaction[] | null;
   manualEntries: ManualEntry[];
+  customCategories: CustomCategory[];
   ignoredTransactions: Set<string>;
   currentLanguage: Language;
   currentTheme: Theme;
@@ -24,6 +25,9 @@ interface AppContextType {
   addManualEntry: (entry: Omit<ManualEntry, 'id'>) => void;
   updateManualEntry: (id: string, entry: Omit<ManualEntry, 'id'>) => void;
   deleteManualEntry: (id: string) => void;
+  addCustomCategory: (category: Omit<CustomCategory, 'id'>) => void;
+  updateCustomCategory: (id: string, category: Omit<CustomCategory, 'id'>) => void;
+  deleteCustomCategory: (id: string) => void;
   toggleIgnoreTransaction: (transaction: Transaction) => void;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
@@ -46,14 +50,27 @@ const STORAGE_KEYS = {
   THEME: 'theme',
   MANUAL_ENTRIES: 'manualEntries',
   IGNORED_TRANSACTIONS: 'ignoredTransactions',
+  CUSTOM_CATEGORIES: 'customCategories',
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [data, setData] = useState<AnalyzedData | null>(null);
   const [originalData, setOriginalData] = useState<AnalyzedData | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[] | null>(null);
+  const rawTransactionsRef = useRef<Transaction[] | null>(null);
   const [manualEntries, setManualEntries] = useState<ManualEntry[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.MANUAL_ENTRIES);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.CUSTOM_CATEGORIES);
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -107,6 +124,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.MANUAL_ENTRIES, JSON.stringify(manualEntries));
   }, [manualEntries]);
 
+  // Save custom categories to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_CATEGORIES, JSON.stringify(customCategories));
+  }, [customCategories]);
+
   // Save ignored transactions to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.IGNORED_TRANSACTIONS, JSON.stringify(Array.from(ignoredTransactions)));
@@ -136,14 +158,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           try {
             const transactions: Transaction[] = [];
             for (const row of results.data as Record<string, string>[]) {
-              const transaction = parseCSVRow(row);
+              const transaction = parseCSVRow(row, customCategories);
               if (transaction) {
                 transactions.push(transaction);
               }
             }
             
-            setAllTransactions(transactions);
-            const analyzed = analyzeData(transactions, manualEntries, ignoredTransactions);
+            rawTransactionsRef.current = transactions;
+            const recategorizedTransactions = recategorizeTransactions(transactions, customCategories);
+            setAllTransactions(recategorizedTransactions);
+            const analyzed = analyzeData(recategorizedTransactions, manualEntries, ignoredTransactions);
             setOriginalData(analyzed);
             setData(analyzed);
             
@@ -171,7 +195,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setError('errorReadingFile');
       setIsLoading(false);
     }
-  }, [manualEntries, ignoredTransactions]);
+  }, [manualEntries, ignoredTransactions, customCategories]);
 
   const applyFilters = useCallback(() => {
     if (!allTransactions || !originalData) return;
@@ -243,9 +267,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setData(filteredData);
   }, [allTransactions, originalData, manualEntries, ignoredTransactions, filterState]);
 
-  // Update originalData when manual entries or ignored transactions change
+  // Re-categorize transactions when custom categories change
   useEffect(() => {
-    if (allTransactions) {
+    if (rawTransactionsRef.current && rawTransactionsRef.current.length > 0) {
+      // Re-categorize transactions when custom categories change
+      const recategorizedTransactions = recategorizeTransactions(rawTransactionsRef.current, customCategories);
+      setAllTransactions(recategorizedTransactions);
+      // Immediately update originalData to ensure statistics refresh
+      const analyzed = analyzeData(recategorizedTransactions, manualEntries, ignoredTransactions);
+      setOriginalData(analyzed);
+    }
+  }, [customCategories, manualEntries, ignoredTransactions]);
+
+  // Update originalData when transactions, manual entries, or ignored transactions change
+  useEffect(() => {
+    if (allTransactions && (!rawTransactionsRef.current || rawTransactionsRef.current.length === 0)) {
+      // Only update if we don't have raw transactions (e.g., initial load or manual entries change)
       const analyzed = analyzeData(allTransactions, manualEntries, ignoredTransactions);
       setOriginalData(analyzed);
     }
@@ -277,6 +314,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const deleteManualEntry = useCallback((id: string) => {
     setManualEntries(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  const addCustomCategory = useCallback((category: Omit<CustomCategory, 'id'>) => {
+    const newCategory: CustomCategory = {
+      ...category,
+      id: Date.now().toString(),
+    };
+    setCustomCategories(prev => [...prev, newCategory]);
+  }, []);
+
+  const updateCustomCategory = useCallback((id: string, category: Omit<CustomCategory, 'id'>) => {
+    setCustomCategories(prev => prev.map(c => c.id === id ? { ...category, id } : c));
+  }, []);
+
+  const deleteCustomCategory = useCallback((id: string) => {
+    setCustomCategories(prev => prev.filter(c => c.id !== id));
   }, []);
 
   const toggleIgnoreTransaction = useCallback((transaction: Transaction) => {
@@ -344,6 +397,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         originalData,
         allTransactions,
         manualEntries,
+        customCategories,
         ignoredTransactions,
         currentLanguage,
         currentTheme,
@@ -356,6 +410,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addManualEntry,
         updateManualEntry,
         deleteManualEntry,
+        addCustomCategory,
+        updateCustomCategory,
+        deleteCustomCategory,
         toggleIgnoreTransaction,
         setLanguage: setCurrentLanguage,
         setTheme: setCurrentTheme,

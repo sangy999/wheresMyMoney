@@ -98,7 +98,14 @@ export const translations: Record<Language, Translations> = {
       "purple": "Purple",
       "orange": "Orange"
     },
-    "selectTheme": "Select theme"
+    "selectTheme": "Select theme",
+    "customCategories": "Custom Categories",
+    "addCustomCategory": "Add Custom Category",
+    "editCustomCategory": "Edit Custom Category",
+    "categoryName": "Category Name",
+    "keywords": "Keywords",
+    "keywordsHint": "Enter keywords separated by commas. Transactions matching these keywords will be categorized here.",
+    "noCustomCategories": "No custom categories yet. Add one above to automatically categorize transactions by keywords."
   },
   "lt": {
     "appTitle": "💰 Kur mano pinigai?",
@@ -197,7 +204,14 @@ export const translations: Record<Language, Translations> = {
       "purple": "Violetinis",
       "orange": "Oranžinis"
     },
-    "selectTheme": "Pasirinkite temą"
+    "selectTheme": "Pasirinkite temą",
+    "customCategories": "Pasirinktinės kategorijos",
+    "addCustomCategory": "Pridėti pasirinktinę kategoriją",
+    "editCustomCategory": "Redaguoti pasirinktinę kategoriją",
+    "categoryName": "Kategorijos pavadinimas",
+    "keywords": "Raktiniai žodžiai",
+    "keywordsHint": "Įveskite raktinius žodžius, atskirtus kableliais. Operacijos, atitinkančios šiuos raktinius žodžius, bus automatiškai priskirtos šiai kategorijai.",
+    "noCustomCategories": "Dar nėra pasirinktinių kategorijų. Pridėkite vieną aukščiau, kad automatiškai kategorizuotumėte operacijas pagal raktinius žodžius."
   }
 };
 

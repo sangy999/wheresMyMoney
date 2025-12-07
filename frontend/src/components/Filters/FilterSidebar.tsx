@@ -4,6 +4,7 @@ import { t, translateCategory, sortCategoriesByOrder, EXPENSE_CATEGORY_ORDER, IN
 import ManualEntryForm from './ManualEntryForm';
 import ManualEntriesList from './ManualEntriesList';
 import IgnoredTransactionsList from './IgnoredTransactionsList';
+import CustomCategoriesManager from './CustomCategoriesManager';
 
 export default function FilterSidebar() {
   const {
@@ -198,6 +199,11 @@ export default function FilterSidebar() {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="filter-group">
+            <h3>{t('customCategories', currentLanguage) || 'Custom Categories'}</h3>
+            <CustomCategoriesManager />
           </div>
 
           <div className="filter-group">
