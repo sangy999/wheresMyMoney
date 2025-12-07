@@ -105,6 +105,11 @@
                         </div>
                     </div>
                     
+                    <div class="filter-group">
+                        <h3 data-translate="ignoredTransactions">Ignored Transactions</h3>
+                        <div id="ignoredTransactionsContainer" class="ignored-transactions-container"></div>
+                    </div>
+                    
                     <div class="filter-actions">
                         <button onclick="resetFilters()" class="filter-btn" data-translate="resetFilters">Reset Filters</button>
                     </div>
@@ -208,7 +213,9 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadTranslations();
             loadManualEntries();
+            loadIgnoredTransactions();
             renderManualEntries();
+            renderIgnoredTransactions();
         });
     </script>
 </body>

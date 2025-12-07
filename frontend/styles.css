@@ -579,6 +579,56 @@ h1 {
     color: #a0a0a0;
     line-height: 1.4;
     word-break: break-word;
+    margin-bottom: 8px;
+}
+
+.transaction-item.ignored {
+    opacity: 0.7;
+    background: #252538;
+    border-left-color: #ff9800;
+    position: relative;
+}
+
+.transaction-item.ignored .transaction-header,
+.transaction-item.ignored .transaction-beneficiary,
+.transaction-item.ignored .transaction-details {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.transaction-item.ignored .transaction-amount {
+    opacity: 0.6;
+}
+
+.transaction-actions {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #3d3d5c;
+}
+
+.ignore-btn {
+    padding: 4px 10px;
+    background: #ff9800;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.ignore-btn:hover {
+    background: #fb8c00;
+    transform: translateY(-1px);
+}
+
+.ignore-btn.unignore {
+    background: #28a745;
+}
+
+.ignore-btn.unignore:hover {
+    background: #218838;
 }
 
 .no-transactions {
@@ -1120,6 +1170,117 @@ h1 {
 }
 
 .no-manual-entries {
+    padding: 20px;
+    text-align: center;
+    color: #a0a0a0;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Ignored Transactions Styles */
+.ignored-transactions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 5px;
+    background: #1e1e2e;
+    border-radius: 6px;
+    border: 1px solid #3d3d5c;
+}
+
+/* Custom scrollbar for ignored transactions */
+.ignored-transactions-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ignored-transactions-container::-webkit-scrollbar-track {
+    background: #1e1e2e;
+    border-radius: 3px;
+}
+
+.ignored-transactions-container::-webkit-scrollbar-thumb {
+    background: #3d3d5c;
+    border-radius: 3px;
+}
+
+.ignored-transactions-container::-webkit-scrollbar-thumb:hover {
+    background: #4d4d6c;
+}
+
+.ignored-transaction-item {
+    background: #2d2d44;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #3d3d5c;
+    border-left: 3px solid #ff9800;
+    transition: all 0.2s;
+}
+
+.ignored-transaction-item:hover {
+    background: #35354a;
+    border-color: #ff9800;
+}
+
+.ignored-transaction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.ignored-transaction-date {
+    color: #a0a0a0;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.ignored-transaction-amount {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.ignored-transaction-beneficiary {
+    color: #e0e0e0;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.ignored-transaction-details {
+    font-size: 12px;
+    color: #a0a0a0;
+    line-height: 1.4;
+    word-break: break-word;
+    margin-bottom: 6px;
+}
+
+.ignored-transaction-type {
+    color: #a0a0a0;
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.ignored-transaction-actions {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #3d3d5c;
+}
+
+.reenable-btn {
+    background: #28a745 !important;
+    color: white !important;
+    width: 100%;
+}
+
+.reenable-btn:hover {
+    background: #218838 !important;
+}
+
+.no-ignored-transactions {
     padding: 20px;
     text-align: center;
     color: #a0a0a0;

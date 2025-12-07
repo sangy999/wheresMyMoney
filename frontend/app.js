@@ -4,6 +4,7 @@ let allTransactions = null; // Store all transactions for filtering
 let currentLanguage = localStorage.getItem('language') || 'en';
 let manualEntries = []; // Store manual entries
 let editingManualEntryId = null; // Track which manual entry is being edited
+let ignoredTransactions = new Set(); // Store ignored transaction IDs
 
 // Inline translations
 const translations = {
@@ -83,7 +84,13 @@ const translations = {
         "save": "Save",
         "cancel": "Cancel",
         "noManualEntries": "No manual entries",
-        "manualEntries": "Manual Entries"
+        "manualEntries": "Manual Entries",
+        "ignore": "Ignore",
+        "unignore": "Unignore",
+        "ignored": "Ignored",
+        "ignoredTransactions": "Ignored Transactions",
+        "noIgnoredTransactions": "No ignored transactions",
+        "reenable": "Re-enable"
     },
     "lt": {
         "appTitle": "💰 Kur mano pinigai?",
@@ -161,7 +168,13 @@ const translations = {
         "save": "Išsaugoti",
         "cancel": "Atšaukti",
         "noManualEntries": "Nėra rankinių įrašų",
-        "manualEntries": "Rankiniai įrašai"
+        "manualEntries": "Rankiniai įrašai",
+        "ignore": "Ignoruoti",
+        "unignore": "Neignoruoti",
+        "ignored": "Ignoruota",
+        "ignoredTransactions": "Ignoruotos operacijos",
+        "noIgnoredTransactions": "Nėra ignoruotų operacijų",
+        "reenable": "Įjungti vėl"
     }
 };
 
@@ -426,6 +439,7 @@ async function analyzeFile() {
                     originalData = data; // Store original analyzed data
                     populateFilterOptions(data);
                     displayResults(data);
+                    renderIgnoredTransactions();
                 } catch (error) {
                     console.error('Analysis error:', error);
                     showError('errorAnalyzingData');
@@ -446,7 +460,7 @@ async function analyzeFile() {
     }
 }
 
-function analyzeData(rawData) {
+function analyzeData(rawData, manualEntriesToUse = null) {
     // Process transactions from CSV
     const csvTransactions = rawData
         .filter(row => {
@@ -474,15 +488,39 @@ function analyzeData(rawData) {
         })
         .filter(t => !isNaN(t.amount) && !isNaN(t.date.getTime()));
     
-    // Get manual entries as transactions
-    const manualTransactions = getManualEntriesAsTransactions();
+    // Get manual entries as transactions - use provided entries or global ones
+    let manualTransactions;
+    if (manualEntriesToUse !== null) {
+        // Convert provided manual entries to transactions
+        manualTransactions = manualEntriesToUse.map(entry => ({
+            date: parseDate(entry.date),
+            dateStr: entry.date,
+            amount: entry.amount,
+            beneficiary: '',
+            details: entry.description,
+            type: entry.type,
+            category: 'Manual Additions',
+            isManual: true,
+            manualEntryId: entry.id // Include manual entry ID for unique identification
+        }));
+    } else {
+        // Use global manual entries
+        manualTransactions = getManualEntriesAsTransactions();
+    }
     
     // Merge CSV and manual transactions
     const transactions = [...csvTransactions, ...manualTransactions];
     
-    // Separate income and expenses
-    const expenses = transactions.filter(t => t.type === 'D');
-    const income = transactions.filter(t => t.type === 'K');
+    // Filter out ignored transactions for calculations only
+    const nonIgnoredTransactions = transactions.filter(t => !isTransactionIgnored(t));
+    
+    // Separate income and expenses (for calculations - totals, category sums)
+    const expenses = nonIgnoredTransactions.filter(t => t.type === 'D');
+    const income = nonIgnoredTransactions.filter(t => t.type === 'K');
+    
+    // Keep all transactions (including ignored) for display purposes
+    const allExpenses = transactions.filter(t => t.type === 'D');
+    const allIncome = transactions.filter(t => t.type === 'K');
     
     // Calculate totals
     const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
@@ -515,6 +553,7 @@ function analyzeData(rawData) {
     const monthlyIncome = {};
     const monthlyStats = {};
     
+    // Process expenses for calculations (only non-ignored)
     expenses.forEach(t => {
         const month = formatMonth(t.date);
         monthlyExpenses[month] = (monthlyExpenses[month] || 0) + t.amount;
@@ -536,20 +575,46 @@ function analyzeData(rawData) {
         monthlyStats[month].expenseCount++;
         monthlyStats[month].transactionCount++;
         
-        // Track expenses by category
+        // Track expenses by category (for calculations)
         if (!monthlyStats[month].expenseCategories[t.category]) {
             monthlyStats[month].expenseCategories[t.category] = 0;
-            monthlyStats[month].expenseTransactions[t.category] = [];
         }
         monthlyStats[month].expenseCategories[t.category] += t.amount;
+    });
+    
+    // Process all expenses (including ignored) for display
+    allExpenses.forEach(t => {
+        const month = formatMonth(t.date);
+        
+        if (!monthlyStats[month]) {
+            monthlyStats[month] = {
+                income: 0,
+                expenses: 0,
+                transactionCount: 0,
+                expenseCount: 0,
+                incomeCount: 0,
+                expenseCategories: {},
+                incomeCategories: {},
+                expenseTransactions: {},
+                incomeTransactions: {}
+            };
+        }
+        
+        // Track expenses by category (for display - includes all transactions)
+        if (!monthlyStats[month].expenseTransactions[t.category]) {
+            monthlyStats[month].expenseTransactions[t.category] = [];
+        }
         monthlyStats[month].expenseTransactions[t.category].push({
             date: t.dateStr,
             beneficiary: t.beneficiary,
             details: t.details,
-            amount: t.amount
+            amount: t.amount,
+            isManual: t.isManual || false,
+            manualEntryId: t.manualEntryId || null
         });
     });
     
+    // Process income for calculations (only non-ignored)
     income.forEach(t => {
         const month = formatMonth(t.date);
         monthlyIncome[month] = (monthlyIncome[month] || 0) + t.amount;
@@ -571,17 +636,42 @@ function analyzeData(rawData) {
         monthlyStats[month].incomeCount++;
         monthlyStats[month].transactionCount++;
         
-        // Track income by category
+        // Track income by category (for calculations)
         if (!monthlyStats[month].incomeCategories[t.category]) {
             monthlyStats[month].incomeCategories[t.category] = 0;
-            monthlyStats[month].incomeTransactions[t.category] = [];
         }
         monthlyStats[month].incomeCategories[t.category] += t.amount;
+    });
+    
+    // Process all income (including ignored) for display
+    allIncome.forEach(t => {
+        const month = formatMonth(t.date);
+        
+        if (!monthlyStats[month]) {
+            monthlyStats[month] = {
+                income: 0,
+                expenses: 0,
+                transactionCount: 0,
+                expenseCount: 0,
+                incomeCount: 0,
+                expenseCategories: {},
+                incomeCategories: {},
+                expenseTransactions: {},
+                incomeTransactions: {}
+            };
+        }
+        
+        // Track income by category (for display - includes all transactions)
+        if (!monthlyStats[month].incomeTransactions[t.category]) {
+            monthlyStats[month].incomeTransactions[t.category] = [];
+        }
         monthlyStats[month].incomeTransactions[t.category].push({
             date: t.dateStr,
             beneficiary: t.beneficiary,
             details: t.details,
-            amount: t.amount
+            amount: t.amount,
+            isManual: t.isManual || false,
+            manualEntryId: t.manualEntryId || null
         });
     });
     
@@ -632,7 +722,7 @@ function showError(message) {
     errorDiv.style.display = 'block';
 }
 
-function displayResults(data) {
+function displayResults(data, openDropdowns = null, scrollPosition = null) {
     // Update summary
     document.getElementById('totalIncome').textContent = 
         `€${data.summary.total_income.toFixed(2)}`;
@@ -666,7 +756,7 @@ function displayResults(data) {
     createCumulativeCashFlowChart(data.monthly_stats);
     
     // Display monthly statistics
-    displayMonthlyStats(data.monthly_stats);
+    displayMonthlyStats(data.monthly_stats, openDropdowns, scrollPosition);
     
     // Re-apply translations after rendering (in case any were overwritten)
     if (translations[currentLanguage]) {
@@ -1005,9 +1095,27 @@ function createCumulativeCashFlowChart(monthlyStats) {
     });
 }
 
-function displayMonthlyStats(monthlyStats) {
+function displayMonthlyStats(monthlyStats, openDropdowns = null, scrollPosition = null) {
     const container = document.getElementById('monthlyStatsContainer');
     if (!container) return;
+    
+    // Normalize openDropdowns to handle both old format (Set) and new format (object)
+    let normalizedDropdowns = null;
+    if (openDropdowns) {
+        if (openDropdowns instanceof Set) {
+            // Old format - convert to new format
+            normalizedDropdowns = {
+                monthDetails: new Set(),
+                categoryTransactions: openDropdowns
+            };
+        } else {
+            // New format - only use if there are actually open dropdowns
+            if ((openDropdowns.monthDetails && openDropdowns.monthDetails.size > 0) ||
+                (openDropdowns.categoryTransactions && openDropdowns.categoryTransactions.size > 0)) {
+                normalizedDropdowns = openDropdowns;
+            }
+        }
+    }
     
     // Sort months chronologically
     const months = Object.keys(monthlyStats).sort();
@@ -1083,16 +1191,35 @@ function displayMonthlyStats(monthlyStats) {
                                     <div class="category-transactions" id="${transactionId}" style="display: none;">
                                         ${transactions.length > 0 ? `
                                             <div class="transactions-list">
-                                                ${transactions.map(trans => `
-                                                    <div class="transaction-item">
+                                                ${transactions.map(trans => {
+                                                    const transObj = {
+                                                        dateStr: trans.date,
+                                                        beneficiary: trans.beneficiary || '',
+                                                        details: trans.details || '',
+                                                        amount: trans.amount,
+                                                        type: 'D',
+                                                        isManual: trans.isManual || false,
+                                                        manualEntryId: trans.manualEntryId || null
+                                                    };
+                                                    const isIgnored = isTransactionIgnored(transObj);
+                                                    const transId = generateTransactionId(transObj);
+                                                    const transData = encodeURIComponent(JSON.stringify(transObj));
+                                                    return `
+                                                    <div class="transaction-item ${isIgnored ? 'ignored' : ''}" ${isIgnored ? `data-translate-ignored="${t('ignored')}"` : ''}>
                                                         <div class="transaction-header">
                                                             <span class="transaction-date">${trans.date}</span>
                                                             <span class="transaction-amount">€${trans.amount.toFixed(2)}</span>
                                                         </div>
                                                         <div class="transaction-beneficiary">${trans.beneficiary || 'N/A'}</div>
                                                         <div class="transaction-details">${trans.details || ''}</div>
+                                                        <div class="transaction-actions">
+                                                            <button onclick="event.stopPropagation(); handleIgnoreClick('${transData}')" class="ignore-btn ${isIgnored ? 'unignore' : ''}" data-translate="${isIgnored ? 'unignore' : 'ignore'}">
+                                                                ${isIgnored ? t('unignore') : t('ignore')}
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                `).join('')}
+                                                `;
+                                                }).join('')}
                                             </div>
                                         ` : `<div class="no-transactions">${t('noTransactions')}</div>`}
                                     </div>
@@ -1119,16 +1246,35 @@ function displayMonthlyStats(monthlyStats) {
                                     <div class="category-transactions" id="${transactionId}" style="display: none;">
                                         ${transactions.length > 0 ? `
                                             <div class="transactions-list">
-                                                ${transactions.map(trans => `
-                                                    <div class="transaction-item">
+                                                ${transactions.map(trans => {
+                                                    const transObj = {
+                                                        dateStr: trans.date,
+                                                        beneficiary: trans.beneficiary || '',
+                                                        details: trans.details || '',
+                                                        amount: trans.amount,
+                                                        type: 'K',
+                                                        isManual: trans.isManual || false,
+                                                        manualEntryId: trans.manualEntryId || null
+                                                    };
+                                                    const isIgnored = isTransactionIgnored(transObj);
+                                                    const transId = generateTransactionId(transObj);
+                                                    const transData = encodeURIComponent(JSON.stringify(transObj));
+                                                    return `
+                                                    <div class="transaction-item ${isIgnored ? 'ignored' : ''}" ${isIgnored ? `data-translate-ignored="${t('ignored')}"` : ''}>
                                                         <div class="transaction-header">
                                                             <span class="transaction-date">${trans.date}</span>
                                                             <span class="transaction-amount positive">€${trans.amount.toFixed(2)}</span>
                                                         </div>
                                                         <div class="transaction-beneficiary">${trans.beneficiary || 'N/A'}</div>
                                                         <div class="transaction-details">${trans.details || ''}</div>
+                                                        <div class="transaction-actions">
+                                                            <button onclick="event.stopPropagation(); handleIgnoreClick('${transData}')" class="ignore-btn ${isIgnored ? 'unignore' : ''}" data-translate="${isIgnored ? 'unignore' : 'ignore'}">
+                                                                ${isIgnored ? t('unignore') : t('ignore')}
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                `).join('')}
+                                                `;
+                                                }).join('')}
                                             </div>
                                         ` : `<div class="no-transactions">${t('noTransactions')}</div>`}
                                     </div>
@@ -1142,6 +1288,50 @@ function displayMonthlyStats(monthlyStats) {
         
         grid.appendChild(monthCard);
     });
+    
+    // Restore open dropdowns if provided (only if they were actually open)
+    // Only restore if we have both normalizedDropdowns AND scrollPosition (meaning something was open)
+    if (normalizedDropdowns && scrollPosition !== null) {
+        // Use multiple requestAnimationFrame calls to ensure DOM is fully rendered before restoring
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // Restore month details dropdowns
+                if (normalizedDropdowns.monthDetails && normalizedDropdowns.monthDetails.size > 0) {
+                    normalizedDropdowns.monthDetails.forEach(dropdownId => {
+                        const dropdown = document.getElementById(dropdownId);
+                        const month = dropdownId.replace('details-', '');
+                        const icon = document.getElementById(`icon-${month}`);
+                        // Only restore if dropdown exists and is currently closed (was re-rendered as closed)
+                        if (dropdown && icon && dropdown.style.display === 'none') {
+                            dropdown.style.display = 'block';
+                            icon.textContent = '▲';
+                        }
+                    });
+                }
+                
+                // Restore category transaction dropdowns
+                if (normalizedDropdowns.categoryTransactions && normalizedDropdowns.categoryTransactions.size > 0) {
+                    normalizedDropdowns.categoryTransactions.forEach(dropdownId => {
+                        const dropdown = document.getElementById(dropdownId);
+                        const icon = document.getElementById(`icon-${dropdownId}`);
+                        // Only restore if dropdown exists and is currently closed (was re-rendered as closed)
+                        if (dropdown && icon && dropdown.style.display === 'none') {
+                            dropdown.style.display = 'block';
+                            icon.textContent = '▼';
+                        }
+                    });
+                }
+                
+                // Restore scroll position to prevent jumps - use another frame to ensure layout is stable
+                requestAnimationFrame(() => {
+                    window.scrollTo({
+                        top: scrollPosition,
+                        behavior: 'auto'
+                    });
+                });
+            });
+        });
+    }
 }
 
 function toggleMonthDetails(month) {
@@ -1214,6 +1404,9 @@ function populateFilterOptions(data) {
     // Ensure manual entries are rendered
     renderManualEntries();
     
+    // Render ignored transactions
+    renderIgnoredTransactions();
+    
     // Set default date range to cover all data (including manual entries)
     const allDates = [];
     
@@ -1251,7 +1444,7 @@ function formatDateForInput(date) {
     return `${year}-${month}-${day}`;
 }
 
-function applyFilters() {
+function applyFilters(openDropdowns = null, scrollPosition = null) {
     if (!allTransactions || !originalData) return;
     
     // Get filter values
@@ -1370,11 +1563,9 @@ function applyFilters() {
         };
     });
     
-    // Analyze CSV data (which will automatically include manual entries via getManualEntriesAsTransactions)
-    // But we need to filter the manual entries to match our filter criteria
-    // So we'll temporarily replace manualEntries with filtered ones, analyze, then restore
-    const originalManualEntries = [...manualEntries];
-    manualEntries = manualEntries.filter(entry => {
+    // Filter manual entries to match filter criteria
+    // Convert filtered manual transactions back to manual entry format
+    const filteredManualEntries = manualEntries.filter(entry => {
         const manualTrans = {
             date: parseDate(entry.date),
             dateStr: entry.date,
@@ -1394,13 +1585,11 @@ function applyFilters() {
         );
     });
     
-    const filteredData = analyzeData(csvDataForAnalysis);
-    
-    // Restore original manual entries
-    manualEntries = originalManualEntries;
+    // Analyze data with filtered manual entries (without modifying global manualEntries array)
+    const filteredData = analyzeData(csvDataForAnalysis, filteredManualEntries);
     
     // Update display with filtered data
-    displayResults(filteredData);
+    displayResults(filteredData, openDropdowns, scrollPosition);
 }
 
 function resetFilters() {
@@ -1495,6 +1684,106 @@ function toggleCharts() {
     }
 }
 
+// Generate unique ID for a transaction
+function generateTransactionId(transaction) {
+    // For manual entries, use the manual entry ID to ensure uniqueness
+    if (transaction.isManual && transaction.manualEntryId) {
+        return `manual_${transaction.manualEntryId}`;
+    }
+    
+    // For CSV transactions, create a unique identifier based on transaction properties
+    const key = `${transaction.dateStr}|${transaction.beneficiary}|${transaction.details}|${transaction.amount}|${transaction.type}`;
+    
+    // Use a simple hash function to create a unique ID that handles Unicode characters
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+        const char = key.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Return a positive hash value as string
+    return Math.abs(hash).toString(36);
+}
+
+// Ignored Transactions Functions
+function loadIgnoredTransactions() {
+    const saved = localStorage.getItem('ignoredTransactions');
+    if (saved) {
+        try {
+            const ignoredArray = JSON.parse(saved);
+            ignoredTransactions = new Set(ignoredArray);
+        } catch (e) {
+            console.error('Error loading ignored transactions:', e);
+            ignoredTransactions = new Set();
+        }
+    }
+}
+
+function saveIgnoredTransactions() {
+    localStorage.setItem('ignoredTransactions', JSON.stringify(Array.from(ignoredTransactions)));
+}
+
+function isTransactionIgnored(transaction) {
+    const id = generateTransactionId(transaction);
+    return ignoredTransactions.has(id);
+}
+
+function handleIgnoreClick(transDataStr) {
+    try {
+        const transaction = JSON.parse(decodeURIComponent(transDataStr));
+        toggleIgnoreTransaction(transaction);
+    } catch (e) {
+        console.error('Error parsing transaction data:', e);
+    }
+}
+
+function toggleIgnoreTransaction(transaction) {
+    const id = generateTransactionId(transaction);
+    if (ignoredTransactions.has(id)) {
+        ignoredTransactions.delete(id);
+    } else {
+        ignoredTransactions.add(id);
+    }
+    saveIgnoredTransactions();
+    
+    // Store scroll position to prevent jumps
+    const scrollPosition = window.scrollY || window.pageYOffset;
+    
+    // Store which dropdowns are currently open (both month details and category transactions)
+    const openDropdowns = {
+        monthDetails: new Set(),
+        categoryTransactions: new Set()
+    };
+    
+    // Store open month details (format: details-YYYY-MM)
+    // Only check inline style since that's what we control
+    document.querySelectorAll('.month-details').forEach(element => {
+        // Check if display is explicitly set to 'block' (meaning it was opened)
+        if (element.style.display === 'block' && element.id) {
+            openDropdowns.monthDetails.add(element.id);
+        }
+    });
+    
+    // Store open category transaction dropdowns
+    document.querySelectorAll('.category-transactions').forEach(element => {
+        // Check if display is explicitly set to 'block' (meaning it was opened)
+        if (element.style.display === 'block' && element.id) {
+            openDropdowns.categoryTransactions.add(element.id);
+        }
+    });
+    
+    // Re-analyze data if CSV is loaded
+    if (allTransactions) {
+        // Only pass dropdowns and scroll position if we actually have open dropdowns
+        const hasOpenDropdowns = openDropdowns.monthDetails.size > 0 || openDropdowns.categoryTransactions.size > 0;
+        reAnalyzeData(hasOpenDropdowns ? openDropdowns : null, hasOpenDropdowns ? scrollPosition : null);
+    }
+    
+    // Update ignored transactions list in filters
+    renderIgnoredTransactions();
+}
+
 // Manual Entries Functions
 function loadManualEntries() {
     const saved = localStorage.getItem('manualEntries');
@@ -1562,6 +1851,11 @@ function addManualEntry() {
     // Re-analyze data if CSV is loaded
     if (allTransactions) {
         reAnalyzeData();
+    } else if (manualEntries.length > 0) {
+        // If no CSV is loaded but we have manual entries, we still need to update statistics
+        // This handles the case where user adds manual entries before loading CSV
+        // But since there's no CSV data, we can't show statistics yet
+        // The statistics will update once CSV is loaded (manual entries are included automatically)
     }
 }
 
@@ -1594,17 +1888,52 @@ function deleteManualEntry(id) {
     }
 }
 
-function reAnalyzeData() {
-    if (!allTransactions || !originalData) return;
+function reAnalyzeData(openDropdowns = null, scrollPosition = null) {
+    if (!allTransactions) return;
     
-    // Re-analyze with current manual entries
+    // Store scroll position and open dropdowns if not provided
+    const currentScrollPosition = scrollPosition !== null ? scrollPosition : (window.scrollY || window.pageYOffset);
+    
+    // Store which dropdowns are currently open if not provided
+    let currentOpenDropdowns = openDropdowns;
+    if (!currentOpenDropdowns) {
+        currentOpenDropdowns = {
+            monthDetails: new Set(),
+            categoryTransactions: new Set()
+        };
+        
+        // Store open month details
+        document.querySelectorAll('.month-details').forEach(element => {
+            if (element.style.display === 'block' && element.id) {
+                currentOpenDropdowns.monthDetails.add(element.id);
+            }
+        });
+        
+        // Store open category transaction dropdowns
+        document.querySelectorAll('.category-transactions').forEach(element => {
+            if (element.style.display === 'block' && element.id) {
+                currentOpenDropdowns.categoryTransactions.add(element.id);
+            }
+        });
+    }
+    
+    // Re-analyze with current manual entries (use all manual entries, not filtered)
     // analyzeData will automatically include manual entries via getManualEntriesAsTransactions()
     const data = analyzeData(allTransactions);
     originalData = data; // Update original data
     populateFilterOptions(data);
     
     // Apply current filters (which will properly handle manual entries)
-    applyFilters();
+    // This will update the display with the new statistics including manual entries
+    // Only pass dropdowns and scroll position if we actually have open dropdowns
+    const hasOpenDropdowns = currentOpenDropdowns.monthDetails.size > 0 || currentOpenDropdowns.categoryTransactions.size > 0;
+    
+    // Always call applyFilters to update display with current filter settings
+    // applyFilters will filter manual entries appropriately without modifying the global array
+    applyFilters(hasOpenDropdowns ? currentOpenDropdowns : null, hasOpenDropdowns ? currentScrollPosition : null);
+    
+    // Update ignored transactions list in filters
+    renderIgnoredTransactions();
 }
 
 function cancelManualEdit() {
@@ -1663,7 +1992,95 @@ function getManualEntriesAsTransactions() {
         details: entry.description,
         type: entry.type,
         category: 'Manual Additions',
-        isManual: true
+        isManual: true,
+        manualEntryId: entry.id // Include manual entry ID for unique identification
     }));
+}
+
+// Render ignored transactions list in filters
+function renderIgnoredTransactions() {
+    const container = document.getElementById('ignoredTransactionsContainer');
+    if (!container) return;
+    
+    if (ignoredTransactions.size === 0) {
+        container.innerHTML = `<div class="no-ignored-transactions">${t('noIgnoredTransactions')}</div>`;
+        return;
+    }
+    
+    // Get all transactions (CSV + manual) to find ignored ones
+    const allTrans = [];
+    
+    // Add CSV transactions
+    if (allTransactions) {
+        allTransactions.forEach(row => {
+            const type = row['D/K'] || '';
+            if (type === 'D' || type === 'K') {
+                const dateStr = row['Date'] || '';
+                const amount = parseFloat(row['Amount'] || '0');
+                const beneficiary = (row['Beneficiary'] || '').trim();
+                const details = (row['Details'] || '').trim();
+                const date = parseDate(dateStr);
+                
+                if (!isNaN(amount) && !isNaN(date.getTime())) {
+                    allTrans.push({
+                        date,
+                        dateStr,
+                        amount,
+                        beneficiary,
+                        details,
+                        type,
+                        category: categorizeTransaction(beneficiary, details),
+                        isManual: false
+                    });
+                }
+            }
+        });
+    }
+    
+    // Add manual entries
+    allTrans.push(...getManualEntriesAsTransactions());
+    
+    // Filter to only ignored transactions
+    const ignoredTrans = allTrans.filter(t => isTransactionIgnored(t));
+    
+    // Sort by date (newest first)
+    ignoredTrans.sort((a, b) => b.date - a.date);
+    
+    container.innerHTML = ignoredTrans.map(trans => {
+        const transObj = {
+            dateStr: trans.dateStr,
+            beneficiary: trans.beneficiary || '',
+            details: trans.details || '',
+            amount: trans.amount,
+            type: trans.type,
+            isManual: trans.isManual || false,
+            manualEntryId: trans.manualEntryId || null
+        };
+        const transData = encodeURIComponent(JSON.stringify(transObj));
+        const typeLabel = trans.type === 'D' ? t('expenses') : t('income');
+        const typeClass = trans.type === 'D' ? 'negative' : 'positive';
+        
+        return `
+            <div class="ignored-transaction-item">
+                <div class="ignored-transaction-header">
+                    <span class="ignored-transaction-date">${trans.dateStr}</span>
+                    <span class="ignored-transaction-amount ${typeClass}">€${trans.amount.toFixed(2)}</span>
+                </div>
+                <div class="ignored-transaction-beneficiary">${trans.beneficiary || 'N/A'}</div>
+                <div class="ignored-transaction-details">${trans.details || ''}</div>
+                <div class="ignored-transaction-type">${typeLabel}</div>
+                <div class="ignored-transaction-actions">
+                    <button onclick="handleIgnoreClick('${transData}')" class="filter-btn-small reenable-btn" data-translate="reenable">
+                        ${t('reenable')}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Re-apply translations
+    setTimeout(() => {
+        applyTranslations();
+    }, 50);
 }
 
