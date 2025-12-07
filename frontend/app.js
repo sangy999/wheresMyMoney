@@ -1,4 +1,5 @@
 let expenseChart, trendChart, merchantChart, savingsRateChart, cumulativeCashFlowChart;
+let categoryOverTimeChart, monthOverMonthChart, averageSpendingChart, categoryGrowthChart, spendingEfficiencyChart;
 let originalData = null; // Store original unfiltered data
 let allTransactions = null; // Store all transactions for filtering
 let currentLanguage = localStorage.getItem('language') || 'en';
@@ -41,6 +42,11 @@ const translations = {
         "topExpenseMerchants": "Top Expense Merchants",
         "savingsRateOverTime": "Savings Rate Over Time",
         "cumulativeCashFlow": "Cumulative Cash Flow",
+        "expensesByCategoryOverTime": "Expenses by Category Over Time",
+        "monthOverMonthComparison": "Month-over-Month Category Comparison",
+        "averageSpendingPerCategory": "Average Spending per Category",
+        "categoryGrowthRate": "Category Growth Rate",
+        "spendingEfficiency": "Spending Efficiency Analysis",
         "monthNames": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
         "amountSpent": "Amount Spent",
         "savingsRate": "Savings Rate (%)",
@@ -126,6 +132,11 @@ const translations = {
         "topExpenseMerchants": "Top išlaidų pardavėjai",
         "savingsRateOverTime": "Taupymo norma laikui bėgant",
         "cumulativeCashFlow": "Kaupiamasis pinigų srautas",
+        "expensesByCategoryOverTime": "Išlaidos pagal kategoriją laikui bėgant",
+        "monthOverMonthComparison": "Mėnesio palyginimas pagal kategorijas",
+        "averageSpendingPerCategory": "Vidutinės išlaidos pagal kategoriją",
+        "categoryGrowthRate": "Kategorijų augimo tempas",
+        "spendingEfficiency": "Išlaidų efektyvumo analizė",
         "monthNames": ["Sausis", "Vasaris", "Kovas", "Balandis", "Gegužė", "Birželis", "Liepa", "Rugpjūtis", "Rugsėjis", "Spalis", "Lapkritis", "Gruodis"],
         "amountSpent": "Išleista suma",
         "savingsRate": "Taupymo norma (%)",
@@ -782,6 +793,11 @@ function displayResults(data, openDropdowns = null, scrollPosition = null) {
     createMerchantChart(data.top_expense_merchants);
     createSavingsRateChart(data.monthly_stats);
     createCumulativeCashFlowChart(data.monthly_stats);
+    createCategoryOverTimeChart(data.monthly_stats);
+    createMonthOverMonthChart(data.monthly_stats);
+    createAverageSpendingChart(data.monthly_stats);
+    createCategoryGrowthChart(data.monthly_stats);
+    createSpendingEfficiencyChart(data.monthly_stats);
     
     // Display monthly statistics
     displayMonthlyStats(data.monthly_stats, openDropdowns, scrollPosition);
@@ -1116,6 +1132,507 @@ function createCumulativeCashFlowChart(monthlyStats) {
                     title: {
                         display: true,
                         text: t('monthNames')[0] ? 'Month' : 'Month'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createCategoryOverTimeChart(monthlyStats) {
+    const ctx = document.getElementById('categoryOverTimeChart').getContext('2d');
+    
+    if (categoryOverTimeChart) categoryOverTimeChart.destroy();
+    
+    // Sort months chronologically
+    const months = Object.keys(monthlyStats).sort();
+    
+    // Get all expense categories across all months
+    const allCategories = new Set();
+    months.forEach(month => {
+        Object.keys(monthlyStats[month].expenseCategories || {}).forEach(cat => {
+            allCategories.add(cat);
+        });
+    });
+    
+    // Get top 8 categories by total spending (to avoid clutter)
+    const categoryTotals = {};
+    allCategories.forEach(cat => {
+        categoryTotals[cat] = months.reduce((sum, month) => {
+            return sum + (monthlyStats[month].expenseCategories[cat] || 0);
+        }, 0);
+    });
+    
+    const topCategories = Object.entries(categoryTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([cat]) => cat);
+    
+    // Prepare datasets for each category
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+        '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+    ];
+    
+    const datasets = topCategories.map((category, index) => ({
+        label: translateCategory(category),
+        data: months.map(month => monthlyStats[month].expenseCategories[category] || 0),
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length] + '40',
+        tension: 0.4,
+        fill: false
+    }));
+    
+    categoryOverTimeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: €${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toFixed(0);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: t('amountSpent')
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createMonthOverMonthChart(monthlyStats) {
+    const ctx = document.getElementById('monthOverMonthChart').getContext('2d');
+    
+    if (monthOverMonthChart) monthOverMonthChart.destroy();
+    
+    // Sort months chronologically
+    const months = Object.keys(monthlyStats).sort();
+    
+    if (months.length < 2) {
+        // Not enough data for comparison
+        monthOverMonthChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: { responsive: true }
+        });
+        return;
+    }
+    
+    // Get all expense categories
+    const allCategories = new Set();
+    months.forEach(month => {
+        Object.keys(monthlyStats[month].expenseCategories || {}).forEach(cat => {
+            allCategories.add(cat);
+        });
+    });
+    
+    // Get top 6 categories by average spending
+    const categoryAverages = {};
+    allCategories.forEach(cat => {
+        const total = months.reduce((sum, month) => {
+            return sum + (monthlyStats[month].expenseCategories[cat] || 0);
+        }, 0);
+        categoryAverages[cat] = total / months.length;
+    });
+    
+    const topCategories = Object.entries(categoryAverages)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([cat]) => cat);
+    
+    // Prepare data: each category is a dataset, each month is a bar group
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+        '#9966FF', '#FF9F40'
+    ];
+    
+    const datasets = topCategories.map((category, index) => ({
+        label: translateCategory(category),
+        data: months.map(month => monthlyStats[month].expenseCategories[category] || 0),
+        backgroundColor: colors[index % colors.length],
+        borderColor: colors[index % colors.length],
+        borderWidth: 1
+    }));
+    
+    monthOverMonthChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: €${context.parsed.y.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toFixed(0);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: t('amountSpent')
+                    }
+                },
+                x: {
+                    stacked: false,
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createAverageSpendingChart(monthlyStats) {
+    const ctx = document.getElementById('averageSpendingChart').getContext('2d');
+    
+    if (averageSpendingChart) averageSpendingChart.destroy();
+    
+    // Sort months chronologically
+    const months = Object.keys(monthlyStats).sort();
+    
+    // Calculate average spending per category
+    const categoryTotals = {};
+    const categoryCounts = {};
+    
+    months.forEach(month => {
+        Object.keys(monthlyStats[month].expenseCategories || {}).forEach(cat => {
+            if (!categoryTotals[cat]) {
+                categoryTotals[cat] = 0;
+                categoryCounts[cat] = 0;
+            }
+            categoryTotals[cat] += monthlyStats[month].expenseCategories[cat];
+            categoryCounts[cat]++;
+        });
+    });
+    
+    const categoryAverages = {};
+    Object.keys(categoryTotals).forEach(cat => {
+        categoryAverages[cat] = categoryTotals[cat] / categoryCounts[cat];
+    });
+    
+    // Sort by average (descending)
+    const sortedCategories = Object.entries(categoryAverages)
+        .sort((a, b) => b[1] - a[1]);
+    
+    const labels = sortedCategories.map(([cat]) => translateCategory(cat));
+    const values = sortedCategories.map(([, avg]) => avg);
+    
+    averageSpendingChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: t('averageSpendingPerCategory'),
+                data: values,
+                backgroundColor: '#667eea',
+                borderColor: '#5568d3',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '€' + context.parsed.x.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toFixed(0);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: t('amountSpent')
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Category'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createCategoryGrowthChart(monthlyStats) {
+    const ctx = document.getElementById('categoryGrowthChart').getContext('2d');
+    
+    if (categoryGrowthChart) categoryGrowthChart.destroy();
+    
+    // Sort months chronologically
+    const months = Object.keys(monthlyStats).sort();
+    
+    if (months.length < 2) {
+        // Not enough data for growth calculation
+        categoryGrowthChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: { responsive: true }
+        });
+        return;
+    }
+    
+    // Calculate growth rate for each category
+    // Growth rate = (current month - previous month) / previous month * 100
+    const categoryGrowthRates = {};
+    
+    // Get all categories
+    const allCategories = new Set();
+    months.forEach(month => {
+        Object.keys(monthlyStats[month].expenseCategories || {}).forEach(cat => {
+            allCategories.add(cat);
+        });
+    });
+    
+    // Calculate growth rates for each category
+    allCategories.forEach(cat => {
+        const growthRates = [];
+        for (let i = 1; i < months.length; i++) {
+            const prevMonth = monthlyStats[months[i - 1]].expenseCategories[cat] || 0;
+            const currMonth = monthlyStats[months[i]].expenseCategories[cat] || 0;
+            
+            if (prevMonth === 0) {
+                growthRates.push(currMonth > 0 ? 100 : 0); // New category
+            } else {
+                growthRates.push(((currMonth - prevMonth) / prevMonth) * 100);
+            }
+        }
+        categoryGrowthRates[cat] = growthRates;
+    });
+    
+    // Get top 6 categories by average growth rate
+    const categoryAvgGrowth = {};
+    Object.keys(categoryGrowthRates).forEach(cat => {
+        const rates = categoryGrowthRates[cat];
+        const avg = rates.reduce((sum, rate) => sum + rate, 0) / rates.length;
+        categoryAvgGrowth[cat] = avg;
+    });
+    
+    const topCategories = Object.entries(categoryAvgGrowth)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, 6)
+        .map(([cat]) => cat);
+    
+    // Prepare datasets (skip first month as we need previous month for comparison)
+    const monthLabels = months.slice(1);
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+        '#9966FF', '#FF9F40'
+    ];
+    
+    const datasets = topCategories.map((category, index) => ({
+        label: translateCategory(category),
+        data: categoryGrowthRates[category],
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length] + '40',
+        tension: 0.4,
+        fill: false,
+        pointRadius: 4,
+        pointHoverRadius: 6
+    }));
+    
+    categoryGrowthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed.y;
+                            const sign = value >= 0 ? '+' : '';
+                            return `${context.dataset.label}: ${sign}${value.toFixed(1)}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(0) + '%';
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Growth Rate (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createSpendingEfficiencyChart(monthlyStats) {
+    const ctx = document.getElementById('spendingEfficiencyChart').getContext('2d');
+    
+    if (spendingEfficiencyChart) spendingEfficiencyChart.destroy();
+    
+    // Sort months chronologically
+    const months = Object.keys(monthlyStats).sort();
+    
+    if (months.length === 0) {
+        spendingEfficiencyChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: { responsive: true }
+        });
+        return;
+    }
+    
+    // Calculate average monthly expenses (baseline)
+    const totalExpenses = months.reduce((sum, month) => {
+        return sum + monthlyStats[month].expenses;
+    }, 0);
+    const averageMonthlyExpenses = totalExpenses / months.length;
+    
+    // Calculate efficiency: how much each month deviates from average
+    // Positive = spending more than average (inefficient)
+    // Negative = spending less than average (efficient)
+    const efficiencyData = months.map(month => {
+        const monthlyExpense = monthlyStats[month].expenses;
+        return monthlyExpense - averageMonthlyExpenses;
+    });
+    
+    // Also calculate percentage deviation
+    const percentageData = months.map(month => {
+        const monthlyExpense = monthlyStats[month].expenses;
+        if (averageMonthlyExpenses === 0) return 0;
+        return ((monthlyExpense - averageMonthlyExpenses) / averageMonthlyExpenses) * 100;
+    });
+    
+    // Create color arrays based on values
+    const backgroundColors = efficiencyData.map(value => 
+        value >= 0 ? 'rgba(220, 53, 69, 0.7)' : 'rgba(40, 167, 69, 0.7)'
+    );
+    const borderColors = efficiencyData.map(value => 
+        value >= 0 ? '#dc3545' : '#28a745'
+    );
+    
+    spendingEfficiencyChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Deviation from Average',
+                data: efficiencyData,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const index = context.dataIndex;
+                            const deviation = context.parsed.y;
+                            const percentage = percentageData[index];
+                            const sign = deviation >= 0 ? '+' : '';
+                            return [
+                                `Deviation: ${sign}€${deviation.toFixed(2)}`,
+                                `Percentage: ${sign}${percentage.toFixed(1)}%`,
+                                `Average: €${averageMonthlyExpenses.toFixed(2)}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toFixed(0);
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Deviation from Average (€)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
                     }
                 }
             }
