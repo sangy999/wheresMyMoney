@@ -388,6 +388,17 @@ function categorizeTransaction(beneficiary, details) {
     return 'Other';
 }
 
+// Normalize column names - handles both English and Lithuanian CSV headers
+function getColumnValue(row, columnMappings) {
+    // Try each possible column name in order
+    for (const columnName of columnMappings) {
+        if (row[columnName] !== undefined && row[columnName] !== null && row[columnName] !== '') {
+            return row[columnName];
+        }
+    }
+    return '';
+}
+
 // Parse date helper
 function parseDate(dateStr) {
     // Handle YYYY-MM-DD format
@@ -464,15 +475,17 @@ function analyzeData(rawData, manualEntriesToUse = null) {
     // Process transactions from CSV
     const csvTransactions = rawData
         .filter(row => {
-            const type = row['D/K'] || row['D/K'] || '';
+            // Handle both English and Lithuanian column names
+            const type = getColumnValue(row, ['D/K', 'D/K']);
             return type === 'D' || type === 'K';
         })
         .map(row => {
-            const dateStr = row['Date'] || '';
-            const amount = parseFloat(row['Amount'] || '0');
-            const beneficiary = (row['Beneficiary'] || '').trim();
-            const details = (row['Details'] || '').trim();
-            const type = row['D/K'] || '';
+            // Handle both English and Lithuanian column names
+            const dateStr = getColumnValue(row, ['Date', 'Data']);
+            const amount = parseFloat(getColumnValue(row, ['Amount', 'Suma']) || '0');
+            const beneficiary = getColumnValue(row, ['Beneficiary', 'Gavėjas']).trim();
+            const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim();
+            const type = getColumnValue(row, ['D/K', 'D/K']);
             const date = parseDate(dateStr);
             
             return {
@@ -1413,7 +1426,8 @@ function populateFilterOptions(data) {
     if (allTransactions && allTransactions.length > 0) {
         const csvDates = allTransactions
             .map(row => {
-                const dateStr = row['Date'] || '';
+                // Handle both English and Lithuanian column names
+                const dateStr = getColumnValue(row, ['Date', 'Data']);
                 return parseDate(dateStr);
             })
             .filter(d => !isNaN(d.getTime()));
@@ -1464,17 +1478,19 @@ function applyFilters(openDropdowns = null, scrollPosition = null) {
     // Filter CSV transactions
     let filteredTransactions = allTransactions
         .filter(row => {
-            const type = row['D/K'] || '';
+            // Handle both English and Lithuanian column names
+            const type = getColumnValue(row, ['D/K', 'D/K']);
             if (!filterExpenses && type === 'D') return false;
             if (!filterIncome && type === 'K') return false;
             return type === 'D' || type === 'K';
         })
         .map(row => {
-            const dateStr = row['Date'] || '';
-            const amount = parseFloat(row['Amount'] || '0');
-            const beneficiary = (row['Beneficiary'] || '').trim();
-            const details = (row['Details'] || '').trim();
-            const type = row['D/K'] || '';
+            // Handle both English and Lithuanian column names
+            const dateStr = getColumnValue(row, ['Date', 'Data']);
+            const amount = parseFloat(getColumnValue(row, ['Amount', 'Suma']) || '0');
+            const beneficiary = getColumnValue(row, ['Beneficiary', 'Gavėjas']).trim();
+            const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim();
+            const type = getColumnValue(row, ['D/K', 'D/K']);
             const date = parseDate(dateStr);
             
             return {
@@ -1553,14 +1569,20 @@ function applyFilters(openDropdowns = null, scrollPosition = null) {
     const filteredManualOnly = filteredManualTransactions;
     
     // Convert only CSV transactions back to CSV row format for analyzeData
+    // Include both English and Lithuanian column names to ensure compatibility
     const csvDataForAnalysis = filteredCsvTransactions.map(t => {
-        return {
+        const row = {
             'Date': t.dateStr,
+            'Data': t.dateStr,
             'Amount': t.amount.toString(),
+            'Suma': t.amount.toString(),
             'Beneficiary': t.beneficiary,
+            'Gavėjas': t.beneficiary,
             'Details': t.details,
+            'Paaiškinimai': t.details,
             'D/K': t.type
         };
+        return row;
     });
     
     // Filter manual entries to match filter criteria
@@ -1611,7 +1633,8 @@ function resetFilters() {
     if (allTransactions && allTransactions.length > 0) {
         const csvDates = allTransactions
             .map(row => {
-                const dateStr = row['Date'] || '';
+                // Handle both English and Lithuanian column names
+                const dateStr = getColumnValue(row, ['Date', 'Data']);
                 return parseDate(dateStr);
             })
             .filter(d => !isNaN(d.getTime()));
@@ -2013,12 +2036,13 @@ function renderIgnoredTransactions() {
     // Add CSV transactions
     if (allTransactions) {
         allTransactions.forEach(row => {
-            const type = row['D/K'] || '';
+            // Handle both English and Lithuanian column names
+            const type = getColumnValue(row, ['D/K', 'D/K']);
             if (type === 'D' || type === 'K') {
-                const dateStr = row['Date'] || '';
-                const amount = parseFloat(row['Amount'] || '0');
-                const beneficiary = (row['Beneficiary'] || '').trim();
-                const details = (row['Details'] || '').trim();
+                const dateStr = getColumnValue(row, ['Date', 'Data']);
+                const amount = parseFloat(getColumnValue(row, ['Amount', 'Suma']) || '0');
+                const beneficiary = getColumnValue(row, ['Beneficiary', 'Gavėjas']).trim();
+                const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim();
                 const date = parseDate(dateStr);
                 
                 if (!isNaN(amount) && !isNaN(date.getTime())) {
@@ -2083,4 +2107,3 @@ function renderIgnoredTransactions() {
         applyTranslations();
     }, 50);
 }
-
