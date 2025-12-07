@@ -89,7 +89,16 @@ export const translations: Record<Language, Translations> = {
     "ignored": "Ignored",
     "ignoredTransactions": "Ignored Transactions",
     "noIgnoredTransactions": "No ignored transactions",
-    "reenable": "Re-enable"
+    "reenable": "Re-enable",
+    "themes": {
+      "dark": "Dark",
+      "light": "Light",
+      "blue": "Blue",
+      "green": "Green",
+      "purple": "Purple",
+      "orange": "Orange"
+    },
+    "selectTheme": "Select theme"
   },
   "lt": {
     "appTitle": "💰 Kur mano pinigai?",
@@ -179,7 +188,16 @@ export const translations: Record<Language, Translations> = {
     "ignored": "Ignoruota",
     "ignoredTransactions": "Ignoruotos operacijos",
     "noIgnoredTransactions": "Nėra ignoruotų operacijų",
-    "reenable": "Įjungti vėl"
+    "reenable": "Įjungti vėl",
+    "themes": {
+      "dark": "Tamsus",
+      "light": "Šviesus",
+      "blue": "Mėlynas",
+      "green": "Žalias",
+      "purple": "Violetinis",
+      "orange": "Oranžinis"
+    },
+    "selectTheme": "Pasirinkite temą"
   }
 };
 

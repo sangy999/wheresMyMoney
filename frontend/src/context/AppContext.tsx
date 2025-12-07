@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { AnalyzedData, ManualEntry, FilterState, Language, Transaction } from '../types';
+import { AnalyzedData, ManualEntry, FilterState, Language, Theme, Transaction } from '../types';
 import { analyzeData } from '../utils/analyzer';
 import { parseCSVRow, generateTransactionId } from '../utils/csvParser';
 import Papa from 'papaparse';
@@ -12,6 +12,7 @@ interface AppContextType {
   manualEntries: ManualEntry[];
   ignoredTransactions: Set<string>;
   currentLanguage: Language;
+  currentTheme: Theme;
   filterState: FilterState;
   isLoading: boolean;
   error: string | null;
@@ -24,6 +25,7 @@ interface AppContextType {
   deleteManualEntry: (id: string) => void;
   toggleIgnoreTransaction: (transaction: Transaction) => void;
   setLanguage: (lang: Language) => void;
+  setTheme: (theme: Theme) => void;
   updateFilterState: (updates: Partial<FilterState>) => void;
   resetFilters: () => void;
   applyFilters: () => void;
@@ -40,6 +42,7 @@ export const useApp = () => {
 
 const STORAGE_KEYS = {
   LANGUAGE: 'language',
+  THEME: 'theme',
   MANUAL_ENTRIES: 'manualEntries',
   IGNORED_TRANSACTIONS: 'ignoredTransactions',
 };
@@ -73,6 +76,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
     return (localStorage.getItem(STORAGE_KEYS.LANGUAGE) || 'en') as Language;
   });
+  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
+    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+    const validThemes: Theme[] = ['light', 'dark', 'blue', 'green', 'purple', 'orange'];
+    if (savedTheme && validThemes.includes(savedTheme as Theme)) {
+      return savedTheme as Theme;
+    }
+    // Default to dark theme if no preference saved
+    return 'dark';
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingManualEntryId, setEditingManualEntryId] = useState<string | null>(null);
@@ -102,6 +114,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LANGUAGE, currentLanguage);
   }, [currentLanguage]);
+
+  // Save theme to localStorage and apply to document
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.THEME, currentTheme);
+    document.documentElement.setAttribute('data-theme', currentTheme);
+  }, [currentTheme]);
 
   const loadCSV = useCallback(async (file: File) => {
     setIsLoading(true);
@@ -325,6 +343,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         manualEntries,
         ignoredTransactions,
         currentLanguage,
+        currentTheme,
         filterState,
         isLoading,
         error,
@@ -335,6 +354,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deleteManualEntry,
         toggleIgnoreTransaction,
         setLanguage: setCurrentLanguage,
+        setTheme: setCurrentTheme,
         updateFilterState,
         resetFilters,
         applyFilters,

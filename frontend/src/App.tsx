@@ -5,6 +5,7 @@ import FilterSidebar from './components/Filters/FilterSidebar';
 import MonthlyStatsPanel from './components/MonthlyStats/MonthlyStatsPanel';
 import ChartsPanel from './components/Charts/ChartsPanel';
 import LanguageSwitcher from './components/LanguageSwitcher';
+import ThemeSwitcher from './components/ThemeSwitcher';
 import { useApp } from './context/AppContext';
 import { t } from './utils/translations';
 import './App.css';
@@ -18,7 +19,10 @@ function AppContent() {
       
       <div className="container">
         <div className="header-section">
-          <LanguageSwitcher />
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <LanguageSwitcher />
+            <ThemeSwitcher />
+          </div>
         </div>
         <h1>{t('appTitle', currentLanguage)}</h1>
         

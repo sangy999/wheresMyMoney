@@ -71,6 +71,7 @@ export interface FilterState {
 }
 
 export type Language = 'en' | 'lt';
+export type Theme = 'light' | 'dark' | 'blue' | 'green' | 'purple' | 'orange';
 
 export interface Translations {
   [key: string]: string | string[] | Record<string, string>;
