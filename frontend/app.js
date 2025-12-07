@@ -58,6 +58,7 @@ const translations = {
         "categories": {
             "Salary": "Salary",
             "Other Income": "Other Income",
+            "Opening Balance": "Opening Balance",
             "Groceries": "Groceries",
             "Gas/Fuel": "Gas/Fuel",
             "Subscriptions": "Subscriptions",
@@ -142,6 +143,7 @@ const translations = {
         "categories": {
             "Salary": "Atlyginimas",
             "Other Income": "Kitos pajamos",
+            "Opening Balance": "Likutis pradžiai",
             "Groceries": "Maistas",
             "Gas/Fuel": "Kuras",
             "Subscriptions": "Prenumeratos",
@@ -477,6 +479,14 @@ function analyzeData(rawData, manualEntriesToUse = null) {
         .filter(row => {
             // Handle both English and Lithuanian column names
             const type = getColumnValue(row, ['D/K', 'D/K']);
+            const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim().toUpperCase();
+            
+            // Skip turnover and closing balance lines
+            if (details.includes('TURNOVER') || details.includes('APYVARTA') || 
+                details.includes('CLOSING BALANCE') || details.includes('LIKUTIS PABAIGAI')) {
+                return false;
+            }
+            
             return type === 'D' || type === 'K';
         })
         .map(row => {
@@ -488,14 +498,19 @@ function analyzeData(rawData, manualEntriesToUse = null) {
             const type = getColumnValue(row, ['D/K', 'D/K']);
             const date = parseDate(dateStr);
             
+            // Check if this is an opening balance line
+            const detailsUpper = details.toUpperCase();
+            const isOpeningBalance = detailsUpper.includes('OPENING BALANCE') || 
+                                    detailsUpper.includes('LIKUTIS PRADŽIAI');
+            
             return {
                 date,
                 dateStr,
                 amount,
                 beneficiary,
                 details,
-                type,
-                category: categorizeTransaction(beneficiary, details),
+                type: isOpeningBalance ? 'K' : type, // Force opening balance to be income (K)
+                category: isOpeningBalance ? 'Opening Balance' : categorizeTransaction(beneficiary, details),
                 isManual: false
             };
         })
@@ -1480,6 +1495,14 @@ function applyFilters(openDropdowns = null, scrollPosition = null) {
         .filter(row => {
             // Handle both English and Lithuanian column names
             const type = getColumnValue(row, ['D/K', 'D/K']);
+            const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim().toUpperCase();
+            
+            // Skip turnover and closing balance lines
+            if (details.includes('TURNOVER') || details.includes('APYVARTA') || 
+                details.includes('CLOSING BALANCE') || details.includes('LIKUTIS PABAIGAI')) {
+                return false;
+            }
+            
             if (!filterExpenses && type === 'D') return false;
             if (!filterIncome && type === 'K') return false;
             return type === 'D' || type === 'K';
@@ -1493,14 +1516,19 @@ function applyFilters(openDropdowns = null, scrollPosition = null) {
             const type = getColumnValue(row, ['D/K', 'D/K']);
             const date = parseDate(dateStr);
             
+            // Check if this is an opening balance line
+            const detailsUpper = details.toUpperCase();
+            const isOpeningBalance = detailsUpper.includes('OPENING BALANCE') || 
+                                    detailsUpper.includes('LIKUTIS PRADŽIAI');
+            
             return {
                 date,
                 dateStr,
                 amount,
                 beneficiary,
                 details,
-                type,
-                category: categorizeTransaction(beneficiary, details),
+                type: isOpeningBalance ? 'K' : type, // Force opening balance to be income (K)
+                category: isOpeningBalance ? 'Opening Balance' : categorizeTransaction(beneficiary, details),
                 isManual: false
             };
         })
@@ -2038,22 +2066,34 @@ function renderIgnoredTransactions() {
         allTransactions.forEach(row => {
             // Handle both English and Lithuanian column names
             const type = getColumnValue(row, ['D/K', 'D/K']);
+            const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim().toUpperCase();
+            
+            // Skip turnover and closing balance lines
+            if (details.includes('TURNOVER') || details.includes('APYVARTA') || 
+                details.includes('CLOSING BALANCE') || details.includes('LIKUTIS PABAIGAI')) {
+                return;
+            }
+            
             if (type === 'D' || type === 'K') {
                 const dateStr = getColumnValue(row, ['Date', 'Data']);
                 const amount = parseFloat(getColumnValue(row, ['Amount', 'Suma']) || '0');
                 const beneficiary = getColumnValue(row, ['Beneficiary', 'Gavėjas']).trim();
-                const details = getColumnValue(row, ['Details', 'Paaiškinimai']).trim();
+                const detailsOriginal = getColumnValue(row, ['Details', 'Paaiškinimai']).trim();
                 const date = parseDate(dateStr);
                 
                 if (!isNaN(amount) && !isNaN(date.getTime())) {
+                    // Check if this is an opening balance line
+                    const isOpeningBalance = details.includes('OPENING BALANCE') || 
+                                            details.includes('LIKUTIS PRADŽIAI');
+                    
                     allTrans.push({
                         date,
                         dateStr,
                         amount,
                         beneficiary,
-                        details,
-                        type,
-                        category: categorizeTransaction(beneficiary, details),
+                        details: detailsOriginal,
+                        type: isOpeningBalance ? 'K' : type,
+                        category: isOpeningBalance ? 'Opening Balance' : categorizeTransaction(beneficiary, detailsOriginal),
                         isManual: false
                     });
                 }
