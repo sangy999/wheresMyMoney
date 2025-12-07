@@ -1,22 +1,20 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { t } from '../utils/translations';
 
 export default function FileUpload() {
-  const { loadCSV, isLoading, currentLanguage } = useApp();
+  const { loadCSV, isLoading, currentLanguage, fileName } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string>('');
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setFileName(file.name);
       await loadCSV(file);
     }
   };
 
   return (
-    <div className={`upload-section ${fileName ? 'compact' : ''}`}>
+    <>
       <div className="file-input-wrapper">
         <input
           ref={fileInputRef}
@@ -38,7 +36,7 @@ export default function FileUpload() {
           {t('analyzing', currentLanguage)}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

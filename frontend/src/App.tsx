@@ -14,19 +14,37 @@ function AppContent() {
   const { data, error, currentLanguage } = useApp();
 
   return (
-    <div className="page-wrapper">
+    <div className={`page-wrapper ${!data ? 'no-data-page' : ''}`}>
       <FilterSidebar />
       
-      <div className="container">
-        <div className="header-section">
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <LanguageSwitcher />
-            <ThemeSwitcher />
-          </div>
+      <div className={`container ${!data ? 'no-data-container' : ''}`}>
+        <div className={`header-section ${!data ? 'no-data-header' : ''}`}>
+          {data ? (
+            <>
+              <div className="header-left">
+                <div className="title-upload-container">
+                  <FileUpload />
+                  <h1>{t('appTitle', currentLanguage)}</h1>
+                </div>
+              </div>
+              <div className="header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <LanguageSwitcher />
+                <ThemeSwitcher />
+              </div>
+            </>
+          ) : (
+            <div className="header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <LanguageSwitcher />
+              <ThemeSwitcher />
+            </div>
+          )}
         </div>
-        <h1>{t('appTitle', currentLanguage)}</h1>
-        
-        <FileUpload />
+        {!data && (
+          <div className="no-data-content">
+            <h1>{t('appTitle', currentLanguage)}</h1>
+            <FileUpload />
+          </div>
+        )}
         
         {error && (
           <div id="error" className="error">

@@ -17,6 +17,7 @@ interface AppContextType {
   isLoading: boolean;
   error: string | null;
   editingManualEntryId: string | null;
+  fileName: string | null;
   
   // Actions
   loadCSV: (file: File) => Promise<void>;
@@ -88,6 +89,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingManualEntryId, setEditingManualEntryId] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
   
   const [filterState, setFilterState] = useState<FilterState>({
     dateFrom: '',
@@ -124,6 +126,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const loadCSV = useCallback(async (file: File) => {
     setIsLoading(true);
     setError(null);
+    setFileName(file.name);
     
     try {
       Papa.parse(file, {
@@ -348,6 +351,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isLoading,
         error,
         editingManualEntryId,
+        fileName,
         loadCSV,
         addManualEntry,
         updateManualEntry,

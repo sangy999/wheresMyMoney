@@ -19,6 +19,10 @@ body {
     margin: 0 auto;
 }
 
+.page-wrapper.no-data-page {
+    justify-content: center;
+}
+
 .container {
     flex: 1;
     max-width: 1200px;
@@ -32,10 +36,45 @@ body {
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 
+.container.no-data-container {
+    flex: 0 1 auto;
+    max-width: 800px;
+    padding-left: 260px;
+    padding-right: 260px;
+    margin-left: 260px;
+    margin-right: 260px;
+    position: relative;
+}
+
 .header-section {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
+    gap: 20px;
+}
+
+.header-section.no-data-header {
+    justify-content: flex-end;
+}
+
+.container.no-data-container .header-section.no-data-header .header-right {
+    position: absolute;
+    top: 0;
+    right: 40px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .language-switcher,
@@ -117,56 +156,61 @@ body {
     color: white;
 }
 
+.title-upload-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 0;
+}
+
 h1 {
     text-align: center;
     color: var(--text-primary);
     margin-bottom: 30px;
-    font-size: 2.5em;
+    font-size: 2.0em;
     transition: all 0.3s ease;
 }
 
-.container.has-compact-upload h1 {
-    position: absolute;
-    top: 28px;
-    left: 190px;
-    margin: 0;
-    margin-left: 15px;
-    font-size: 24px;
-    line-height: 1.5;
-    text-align: left;
-    display: inline-flex;
+.no-data-content {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    height: auto;
-    white-space: nowrap;
-    color: var(--text-primary);
-}
-
-.upload-section {
     text-align: center;
-    margin-bottom: 40px;
-    padding: 30px;
-    background: var(--bg-card);
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
 }
 
-.upload-section.compact {
-    position: absolute;
-    top: 20px;
-    left: 20px;
+.no-data-content h1 {
+    margin-bottom: 30px;
+    white-space: nowrap;
+}
+
+.no-data-content .file-input-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.header-left h1 {
     margin: 0;
-    padding: 10px 15px;
     text-align: left;
-    z-index: 10;
-    box-shadow: 0 4px 12px var(--shadow-light);
+    font-size: 1.5em;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    height: fit-content;
+    font-weight: 600;
+}
+
+.title-upload-container h1 {
+    margin: 0;
+    text-align: left;
+    font-size: 1.2em;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    height: fit-content;
+    font-weight: 600;
 }
 
 .file-input-wrapper {
-    margin-bottom: 20px;
-}
-
-.upload-section.compact .file-input-wrapper {
     margin-bottom: 0;
 }
 
@@ -188,13 +232,6 @@ h1 {
     white-space: nowrap;
 }
 
-.upload-section.compact .file-label {
-    padding: 8px 16px;
-    font-size: 14px;
-    max-width: 250px;
-    display: inline-block;
-    vertical-align: middle;
-}
 
 .file-label:hover {
     background: var(--accent-primary-hover);
@@ -233,13 +270,9 @@ h1 {
 }
 
 .loading {
-    margin-top: 20px;
+    margin-top: 8px;
     color: var(--accent-primary);
     font-weight: bold;
-}
-
-.upload-section.compact .loading {
-    margin-top: 8px;
     font-size: 12px;
 }
 
@@ -741,22 +774,14 @@ h1 {
         padding: 6px 30px 6px 10px;
     }
     
-    .upload-section.compact {
-        top: 10px;
-        left: 10px;
-        padding: 8px 12px;
+    .title-upload-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
     }
     
-    .upload-section.compact .file-label {
-        max-width: 180px;
-        font-size: 12px;
-        padding: 6px 12px;
-    }
-    
-    .container.has-compact-upload h1 {
-        left: 200px;
-        font-size: 14px;
-        top: 10px;
+    .title-upload-container h1 {
+        font-size: 1.1em;
     }
     
     .charts {
