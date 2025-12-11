@@ -13,13 +13,15 @@ export default function MonthlyStatsContent() {
 
   const formatMonthName = (monthStr: string) => {
     const [year, month] = monthStr.split('-');
+    const monthNum = parseInt(month);
+    const monthNumPadded = monthNum.toString().padStart(2, '0');
     const monthNames = translations[currentLanguage].monthNames as string[];
     if (monthNames && Array.isArray(monthNames)) {
-      return `${monthNames[parseInt(month) - 1]} ${year}`;
+      return `${monthNames[monthNum - 1]} (${monthNumPadded}) ${year}`;
     }
     // Fallback to English if current language doesn't have monthNames
     const enMonthNames = translations['en'].monthNames as string[];
-    return `${enMonthNames[parseInt(month) - 1]} ${year}`;
+    return `${enMonthNames[monthNum - 1]} (${monthNumPadded}) ${year}`;
   };
 
   return (
