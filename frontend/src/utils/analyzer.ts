@@ -1,4 +1,4 @@
-import { Transaction, ManualEntry, AnalyzedData, MonthlyStats, TransactionDisplay } from '../types';
+import { Transaction, ManualEntry, AnalyzedData, MonthlyStats } from '../types';
 import { parseDate, formatMonth, generateTransactionId } from './csvParser';
 
 export function getManualEntriesAsTransactions(manualEntries: ManualEntry[]): Transaction[] {
@@ -78,6 +78,7 @@ export function analyzeData(
       monthlyStats[month] = {
         income: 0,
         expenses: 0,
+        netBalance: 0,
         transactionCount: 0,
         expenseCount: 0,
         incomeCount: 0,
@@ -106,6 +107,7 @@ export function analyzeData(
       monthlyStats[month] = {
         income: 0,
         expenses: 0,
+        netBalance: 0,
         transactionCount: 0,
         expenseCount: 0,
         incomeCount: 0,
@@ -139,6 +141,7 @@ export function analyzeData(
       monthlyStats[month] = {
         income: 0,
         expenses: 0,
+        netBalance: 0,
         transactionCount: 0,
         expenseCount: 0,
         incomeCount: 0,
@@ -167,6 +170,7 @@ export function analyzeData(
       monthlyStats[month] = {
         income: 0,
         expenses: 0,
+        netBalance: 0,
         transactionCount: 0,
         expenseCount: 0,
         incomeCount: 0,

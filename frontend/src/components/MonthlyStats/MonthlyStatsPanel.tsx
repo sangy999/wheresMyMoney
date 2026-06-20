@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { t, translateCategory } from '../../utils/translations';
+import { t } from '../../utils/translations';
 import MonthlyStatsContent from './MonthlyStatsContent';
 
 export default function MonthlyStatsPanel() {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { t, translateCategory, sortCategoriesByOrder, EXPENSE_CATEGORY_ORDER, INCOME_CATEGORY_ORDER } from '../../utils/translations';
 import ManualEntryForm from './ManualEntryForm';

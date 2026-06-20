@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { t, translateCategory } from '../../utils/translations';
 import Chart from 'chart.js/auto';
@@ -25,7 +25,7 @@ export default function ChartsPanel() {
 }
 
 function ChartsContent() {
-  const { data, currentLanguage } = useApp();
+  const { data } = useApp();
 
   if (!data) return null;
 
@@ -146,7 +146,8 @@ function TrendChart() {
           tooltip: {
             callbacks: {
               label: (context) => {
-                return `${context.dataset.label}: €${context.parsed.y.toFixed(2)}`;
+                const y = context.parsed.y ?? 0;
+                return `${context.dataset.label}: €${y.toFixed(2)}`;
               }
             }
           }
@@ -208,7 +209,7 @@ function MerchantChart() {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (context) => '€' + context.parsed.y.toFixed(2)
+              label: (context) => '€' + (context.parsed.y ?? 0).toFixed(2)
             }
           }
         },
@@ -386,7 +387,7 @@ function CumulativeCashFlowChart() {
             callbacks: {
               label: (context) => {
                 const index = context.dataIndex;
-                const cumulativeValue = context.parsed.y;
+                const cumulativeValue = context.parsed.y ?? 0;
                 const monthlyDiff = monthlyDifferences[index];
                 
                 const cumulativeSign = cumulativeValue >= 0 ? '+' : '';

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { t, translateCategory, translations, sortCategoriesByOrder, EXPENSE_CATEGORY_ORDER, INCOME_CATEGORY_ORDER } from '../../utils/translations';
 import { Transaction } from '../../types';
 import { generateTransactionId } from '../../utils/csvParser';
 
 export default function MonthlyStatsContent() {
-  const { data, ignoredTransactions, toggleIgnoreTransaction, currentLanguage } = useApp();
+  const { data, currentLanguage } = useApp();
 
   if (!data) return null;
 
@@ -38,7 +38,7 @@ export default function MonthlyStatsContent() {
 
 function MonthCard({ month, stats, formatMonthName }: { month: string; stats: any; formatMonthName: (m: string) => string }) {
   const [isOpen, setIsOpen] = useState(false);
-  const { ignoredTransactions, toggleIgnoreTransaction, currentLanguage } = useApp();
+  const { currentLanguage } = useApp();
   const netBalanceClass = stats.netBalance >= 0 ? 'positive' : 'negative';
 
   const expenseCategories = sortCategoriesByOrder(
@@ -116,7 +116,7 @@ function MonthCard({ month, stats, formatMonthName }: { month: string; stats: an
 
 function CategoryItem({ category, amount, total, transactions, type }: any) {
   const [isOpen, setIsOpen] = useState(false);
-  const { ignoredTransactions, toggleIgnoreTransaction, allTransactions, manualEntries, currentLanguage } = useApp();
+  const { ignoredTransactions, toggleIgnoreTransaction, currentLanguage } = useApp();
   const percentage = total > 0 ? ((amount / total) * 100).toFixed(1) : '0.0';
 
   return (
